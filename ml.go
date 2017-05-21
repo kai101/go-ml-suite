@@ -21,21 +21,31 @@ func main() {
 	data2 := "./test_data/ex1data2.txt"
 	c3 := readData(data2)
 	c4 := formLinearE(c3, 2, 2)
-	fmt.Printf("x is %v , y is %v \n", c4.X, c4.Y)
-	//v := mat64.NewDense(0, 0, nil)
-	c2 := linearregression.LinearRegressionE{
-		X: [][]float64{
-			[]float64{1, 2, 3},
-			[]float64{1, 4, 5},
-		},
-		Y:     []float64{2, 3},
-		Theta: []float64{5, 5, 5},
-		Alpha: float64(5),
+	c4.Theta = make([]float64, len(c4.X[0]))
+	c4.Alpha = 0.01
+	iteration := 400
+	_, mean, stdd := linearregression.Normalize(&c4)
+	fullResult := linearregression.ComputeLinearRegressionE(&c4, iteration)
+	fmt.Printf("full result is %v \n", fullResult)
+
+	//prediction
+	given := []float64{1650, 3}
+	for i, v := range given {
+		given[i] = (v - mean[i]) / stdd[i]
+	}
+	form := make([]float64, len(given)+1)
+	form[0] = 1
+	copy(form[1:len(form)], given[:])
+	prediction := float64(0)
+
+	for i, v := range form {
+		prediction += v * c4.Theta[i]
 	}
 
-	v := linearregression.GradienDescentE(&c2)
+	fmt.Printf("prediction of 1650,3 is %v \n", prediction)
 
-	fmt.Printf("output is  %v\n", v)
+	//fmt.Printf("x is %v , y is %v \n", c4.X, c4.Y)
+	//v := mat64.NewDense(0, 0, nil)
 	//v.Mul(a, a)
 	//print("test\n", v)
 }
@@ -52,16 +62,23 @@ func formLinearE(data [][]float64, xNo, yIndex int) linearregression.LinearRegre
 	cloneData = make([][]float64, len(data))
 	copy(cloneData, data)
 
+	//guarding yIndex
+	if yIndex > (len(data[0]) - 1) {
+		log.Fatal()
+	}
 	y = make([]float64, len(data))
 	for i, v := range cloneData {
 		y[i] = v[yIndex]
-		copy(v[yIndex:], v[yIndex+1:])
-		v[len(v)-1] = 0 // or the zero value of T
-		v = v[:len(v)-1]
+		//fmt.Printf("before %v \n", v)
+		copy(v[1:yIndex+1], v[:yIndex])
+		//fmt.Printf("after %v \n", v)
+		//v[len(v)-1] = 0 // or the zero value of T
+		//v = v[:len(v)-1]
+		v[0] = 1
 		cloneData[i] = v
 	}
 
-	if len(cloneData[0]) != xNo {
+	if len(cloneData[0]) != (xNo + 1) {
 		log.Fatal()
 	}
 

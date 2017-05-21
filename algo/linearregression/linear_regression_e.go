@@ -1,5 +1,11 @@
 package linearregression
 
+import (
+	"math"
+
+	"github.com/montanaflynn/stats"
+)
+
 type LinearRegressionE struct {
 	X     [][]float64
 	Y     []float64
@@ -7,11 +13,20 @@ type LinearRegressionE struct {
 	Alpha float64
 }
 
-func ComputeLinearRegressionE(input *LinearRegressionE, iter int) {
+func ComputeLinearRegressionE(input *LinearRegressionE, iter int) *LinearRegressionE {
+	normX, _, _ := Normalize(input)
+	//fmt.Printf("check normalization %v \n", normX)
+	oriX := input.X
+	input.X = normX
 	i := 0
 	for ; i < iter; i++ {
-		GradienDescentE(input)
+		newTheta := GradienDescentE(input)
+		//fmt.Printf("check Theta %v \n", newTheta)
+		input.Theta = newTheta
 	}
+
+	input.X = oriX
+	return input
 }
 
 func GradienDescentE(input *LinearRegressionE) []float64 {
@@ -44,13 +59,14 @@ func GradienDescentE(input *LinearRegressionE) []float64 {
 	varCount := len(input.X[0])
 	for i := 0; i < varCount; i++ {
 		for j := 0; j < rowCount; j++ {
-			thetaChange[i] += input.X[j][i] * err[j]
+			thetaChange[i] += (input.Alpha / float64(yLength)) * input.X[j][i] * err[j]
+			//fmt.Printf("check i%v, j%v, thetac%v, x%v, err%v\n", i, j, thetaChange[i], input.X[j][i], err[j])
 		}
 	}
 
-	for i := 0; i < len(thetaChange); i++ {
-		thetaChange[i] = thetaChange[i] * (input.Alpha / float64(yLength))
-	}
+	//for i := 0; i < len(thetaChange); i++ {
+	//	thetaChange[i] = thetaChange[i] * (input.Alpha / float64(yLength))
+	//}
 
 	//fmt.Printf("thetachange %v = xtranspose %v * err \n", thetaChange, input.X)
 
@@ -63,4 +79,49 @@ func GradienDescentE(input *LinearRegressionE) []float64 {
 	//fmt.Printf("result %v = input.Theta %v - thetha change \n", result, input.Theta)
 
 	return result
+}
+
+func Normalize(input *LinearRegressionE) ([][]float64, []float64, []float64) {
+
+	var features [][]float64
+	//init
+	features = make([][]float64, len(input.X[0])-1)
+
+	for _, v := range input.X {
+		for j, vv := range v {
+			if j == 0 {
+				continue
+			}
+			features[j-1] = append(features[j-1], vv)
+		}
+	}
+
+	//fmt.Printf("check features %v\n", features)
+
+	copy(features, features)
+	var mean []float64
+	mean = make([]float64, len(features))
+	var stdd []float64
+	stdd = make([]float64, len(features))
+	for i, v := range features {
+		mean[i], _ = stats.Mean(v)
+		variance, _ := stats.SampleVariance(v)
+		stdd[i] = math.Sqrt(variance)
+	}
+
+	//fmt.Printf("check stdd%v \n median%v\n", stdd, mean)
+
+	var normX [][]float64
+	normX = make([][]float64, len(input.X))
+	copy(normX, input.X)
+	for i, v := range normX {
+		for j, vv := range v {
+			if j == 0 {
+				continue
+			}
+			normX[i][j] = (vv - mean[j-1]) / stdd[j-1]
+		}
+	}
+	//fmt.Printf("check normX%v \n", normX)
+	return normX, mean, stdd
 }
